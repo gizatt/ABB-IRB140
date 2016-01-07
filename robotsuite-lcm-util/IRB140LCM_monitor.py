@@ -13,6 +13,8 @@ from ctypes import *
 import threading 
 #Import LCM Messages
 from abblcm import *
+from scipy import interpolate
+import numpy as np
 
 #Message Conversion
 def convertABBstate(joint_pos,joint_vel,cartesian):
@@ -36,6 +38,51 @@ def convertSensordata(rawdata):
    msg.hand_torque = rawdata[3:6]
    return msg
 
+#Interpolate and resample
+def resampleJointPlanCubicSpline(joint_cmd, resample_utime_step):
+    '''
+      Inputs:
+        joint_cmd - list of abb_irb140joints instances, utime-ordered, for traj
+        resample_utime_step - time resolution at which resampling should occur. Units
+            are units for abb_irb140joints.utime
+      Outputs:
+        returns a list of the resampled pos configurations, which are represented as
+            lists of joint positions Eg: [ [1, 1, 1, 1, 1, 1] , [1.2, 1, 1, 1, 1, 1] ],
+            or None or [] if joint_cmd is None or [], respectively.
+    '''
+    if joint_cmd is None:
+        return None
+    if len(joint_cmd) == 0:
+        return []
+    times_old = np.array([cmd.utime for cmd in joint_cmd])
+    print times_old
+    start_time = joint_cmd[0].utime
+    end_time = joint_cmd[-1].utime
+    times_new = np.arange(start_time, end_time+resample_utime_step, resample_utime_step)
+    print times_new
+    try:
+        joints_pos_new = []
+        for joint in range(len(joint_cmd[0].pos)): #For each joint, construct spline-interpolation
+            joint_pos_old = np.array([cmd.pos[joint] for cmd in joint_cmd])
+            print joint_pos_old
+            cubespline = interpolate.splrep(times_old, joint_pos_old, s=0)
+            joints_pos_new.append(interpolate.splev(times_new, cubespline, der=0))
+        joint_pos_resampled = [[joints_pos_new[joint][t] \
+                                  for joint in range(len(joint_cmd[0].pos))] \
+                                  for t in range(len(times_new))] #Rearrange into a list of joint pos's
+        return joint_pos_resampled
+    except TypeError as e: # Gives an error if the data can't be spline-interpolated; try linear instead
+        joints_pos_new = []
+        for joint in range(len(joint_cmd[0].pos)): #For each joint, construct spline-interpolation
+            joint_pos_old = np.array([cmd.pos[joint] for cmd in joint_cmd])
+            print joint_pos_old
+            interpf = interpolate.interp1d(times_old, joint_pos_old)
+            joints_pos_new.append(interpf(times_new))
+        joint_pos_resampled = [[joints_pos_new[joint][t] \
+                                  for joint in range(len(joint_cmd[0].pos))] \
+                                  for t in range(len(times_new))] #Rearrange into a list of joint pos's
+        return joint_pos_resampled
+
 def convertACH_Command(msg):
     return msg.Joints
 
@@ -48,12 +95,14 @@ class abbIRB140LCMWrapper:
         self.lc.subscribe("IRB140JOINTPLAN",self.plan_handler)
         self.lc.subscribe("IRB140JOINTCMD",self.command_handler)
         
+        self.resample_utime_step = 100.
 
     def plan_handler(self,channel,data):
-	print "receive plan"
+        print "receive plan"
         msg = abb_irb140joint_plan.decode(data)
-        for i in range(msg.n_cmd_times):
-            self.robot.addJointPosBuffer(msg.joint_cmd[i].pos)
+        plan_new = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
+        for pos in plan_new:
+            self.robot.addJointPosBuffer(pos)
         self.robot.executeJointPosBuffer()
         self.robot.clearJointPosBuffer()
         
