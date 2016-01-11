@@ -19,7 +19,7 @@ r = resampleJointPlanCubicSpline(joint_cmd, .2)
 print 'pos\':'
 for i in r[0]:
     print i
-print 'vels:'
+print 'movetimes:'
 for i in r[1]:
     print i
 
@@ -34,7 +34,7 @@ r = resampleJointPlanCubicSpline(joint_cmd, .2)
 print 'pos\':'
 for i in r[0]:
     print i
-print 'vels:'
+print 'movetimes:'
 for i in r[1]:
     print i
 

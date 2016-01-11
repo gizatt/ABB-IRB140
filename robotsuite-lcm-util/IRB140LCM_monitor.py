@@ -59,7 +59,7 @@ def resampleJointPlanCubicSpline(joint_cmd, resample_utime_step):
     end_time = joint_cmd[-1].utime
     times_new = np.arange(start_time, end_time+resample_utime_step, resample_utime_step)
     joint_pos_resampled = []
-    joint_vel_resampled = []
+    joint_times_resampled = []
     try:
         joints_pos_new = []
         for joint in range(len(joint_cmd[0].pos)): #For each joint, construct spline-interpolation
@@ -78,13 +78,9 @@ def resampleJointPlanCubicSpline(joint_cmd, resample_utime_step):
         joint_pos_resampled = [[joints_pos_new[joint][t] \
                                   for joint in range(len(joint_cmd[0].pos))] \
                                   for t in range(len(times_new))] #Rearrange into a list of joint pos's
-    #Derive joint velocities from joint positions (could use derivatives, but currently this is more accurate)
-    joint_vel_resampled = [[(joint_pos_resampled[i+1][joint] - joint_pos_resampled[i][joint])/resample_utime_step/1000000
-                                  for joint in range(len(joint_cmd[0].pos))]
-                                  for i in range(len(joint_pos_resampled)-1)]
-    #For the ith pos (i in [1,n]), the (i-1)th vel will be used to reach that pos. Velocity to
-    # reach initial pos (i=0) unspecified.
-    return joint_pos_resampled, joint_vel_resampled
+    #Joint move times (all same, because resampled)
+    joint_times_resampled = [resample_utime_step/1000000 for i in range(0,len(joint_pos_resampled) - 1)]
+    return joint_pos_resampled, joint_times_resampled
 
 def convertACH_Command(msg):
     return msg.Joints
@@ -97,23 +93,21 @@ class abbIRB140LCMWrapper:
         self.lc.subscribe("IRB140Input",self.command_handler)
         self.lc.subscribe("IRB140JOINTPLAN",self.plan_handler)
         self.lc.subscribe("IRB140JOINTCMD",self.command_handler)
-        self.resample_utime_step = .01*1000000 # .01 seconds per step; 100 Hz
+        self.resample_utime_step = .05*1000000 # left number (ie. not 1000000) gives seconds per step
 
     def plan_handler(self,channel,data):
         print "receive plan"
         msg = abb_irb140joint_plan.decode(data)
-        plan_pos, plan_vel = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
-        self.robot.set_speed() # use default speed for assuming initial position.
-        self.robot.addJointPosBuffer(plan_pos[0])
+        plan_pos, plan_times = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
+        # Add pos to buffer
+        self.robot.addJointPosTimeBuffer(plan_pos[i])
         for i in range(1, len(plan_pos)):
-            # Set speed before calling addJointPosBuffer
-            max_joint_speed = max([abs(j_vel) for j_vel in plan_vel[i-1]])
-            max_joint_speed = min(max(max_joint_speed, 1), 180)
-            self.robot.set_speed([0,0,0] + [max_joint_speed]) # This will limit joint rotation to max_joint_speed deg/s
+            # Set move time before calling addJointPosBuffer
+            self.robot.setMoveTime(plan_times[i-1])
             # Add pos to buffer
-            self.robot.addJointPosBuffer(plan_pos[i])
-        self.robot.executeJointPosBuffer()
-        self.robot.clearJointPosBuffer()
+            self.robot.addJointPosTimeBuffer(plan_pos[i])
+        self.robot.executeJointPosTimeBuffer()
+        self.robot.clearJointPosTimeBuffer()
         
     def command_handler(self,channel,data):
         print "receive command"
