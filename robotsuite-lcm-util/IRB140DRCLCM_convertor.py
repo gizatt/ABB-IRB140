@@ -14,7 +14,7 @@ class abbIRB140DRCLCMConvertor:
     def __init__(self):
         self.lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=1")
         self.lc.subscribe("IRB140STATE", self.convertNSend)
-        self.lc.subscribe("COMMITTED_ROBOT_PLAN",self.joint_cmd_handler)
+        self.lc.subscribe("COMMITTED_ROBOT_PLAN",self.joint_plan_handler)
         
 
     def joint_plan_handler(self,channel,data):
@@ -27,6 +27,7 @@ class abbIRB140DRCLCMConvertor:
         for i in range(msgOut.n_cmd_times):
             msgOut.joint_cmd[i].pos = [msgIn.plan[i].joint_position[j]/math.pi*180.0 for j in range(msgIn.plan[i].num_joints)]
             msgOut.joint_cmd[i].vel = [msgIn.plan[i].joint_velocity[j]/math.pi*180.0 for j in range(msgIn.plan[i].num_joints)]
+            msgOut.joint_cmd[i].utime = msgIn.plan[i].utime
             #msgOut.joint_cmd[i].pos[0] = -msgOut.joint_cmd[i].pos[0]
             #msgOut.joint_cmd[i].pos[2] = -msgOut.joint_cmd[i].pos[2]
             #msgOut.joint_cmd[i].vel[0] = -msgOut.joint_cmd[i].vel[0]

@@ -100,7 +100,7 @@ class abbIRB140LCMWrapper:
         msg = abb_irb140joint_plan.decode(data)
         plan_pos, plan_times = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
         # Add pos to buffer
-        self.robot.addJointPosTimeBuffer(plan_pos[i])
+        self.robot.addJointPosTimeBuffer(plan_pos[0])
         for i in range(1, len(plan_pos)):
             # Set move time before calling addJointPosBuffer
             self.robot.setMoveTime(plan_times[i-1])
@@ -121,10 +121,6 @@ class abbIRB140LCMWrapper:
         #ABB drive to LCM conversion
         msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian)
         self.lc.publish("IRB140STATE", msg.encode())
-        sensordata = self.robot.getForceSensors()
-        #Force Torque Sensor,  Not yet Tested -AC Feb 23
-        msg = convertSensordata(sensordata)
-        self.lc.publish("IRB140FTSENSOR", msg.encode())
 
     def mainLoop(self,freq):
         pauseDelay = 1.0/freq #In Seconds.
