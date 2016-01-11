@@ -1,7 +1,7 @@
 #This is python code. Useful for testing the method resampleJointPlanCubicSpline
 
 assert (resampleJointPlanCubicSpline(None, 5)) is None
-assert (resampleJointPlanCubicSpline([], 2.5)) == []
+assert (resampleJointPlanCubicSpline([], 2.5)) == ([],[])
 
 def make_abb_joint(utime, pos, vel=[0]*6):
     cmd = abb_irb140joints()
@@ -16,7 +16,11 @@ joint_cmd.append(make_abb_joint(0.,[0.0, 1.0, 1.0, 1.0, 1.0, 0.0]))
 joint_cmd.append(make_abb_joint(1.,[1.0, 1.0, 4.0, 1.0, 1.0, 0.0]))
 joint_cmd.append(make_abb_joint(2.,[2.0, 1.0, 1.0, 1.0, 10.0, 0.0]))
 r = resampleJointPlanCubicSpline(joint_cmd, .2)
-for i in r:
+print 'pos\':'
+for i in r[0]:
+    print i
+print 'vels:'
+for i in r[1]:
     print i
 
 #Simple four-piece test
@@ -27,6 +31,10 @@ joint_cmd.append(make_abb_joint(2.,[2.0, 1.0, 4.0, 1.0, 10.0, 0.0]))
 joint_cmd.append(make_abb_joint(3.,[3.0, 1.0, 1.0, 1.0, 100.0, 0.0]))
 
 r = resampleJointPlanCubicSpline(joint_cmd, .2)
-for i in r:
+print 'pos\':'
+for i in r[0]:
+    print i
+print 'vels:'
+for i in r[1]:
     print i
 

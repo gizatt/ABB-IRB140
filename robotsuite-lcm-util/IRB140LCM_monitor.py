@@ -50,38 +50,41 @@ def resampleJointPlanCubicSpline(joint_cmd, resample_utime_step):
             lists of joint positions Eg: [ [1, 1, 1, 1, 1, 1] , [1.2, 1, 1, 1, 1, 1] ],
             or None or [] if joint_cmd is None or [], respectively.
     '''
-    if joint_cmd is None:
-        return None
+    if joint_cmd is None or resample_utime_step is None or (resample_utime_step == 0):
+        return None # No good answer can be given.
     if len(joint_cmd) == 0:
-        return []
+        return [], []
     times_old = np.array([cmd.utime for cmd in joint_cmd])
-    print times_old
     start_time = joint_cmd[0].utime
     end_time = joint_cmd[-1].utime
     times_new = np.arange(start_time, end_time+resample_utime_step, resample_utime_step)
-    print times_new
+    joint_pos_resampled = []
+    joint_vel_resampled = []
     try:
         joints_pos_new = []
         for joint in range(len(joint_cmd[0].pos)): #For each joint, construct spline-interpolation
             joint_pos_old = np.array([cmd.pos[joint] for cmd in joint_cmd])
-            print joint_pos_old
             cubespline = interpolate.splrep(times_old, joint_pos_old, s=0)
             joints_pos_new.append(interpolate.splev(times_new, cubespline, der=0))
         joint_pos_resampled = [[joints_pos_new[joint][t] \
                                   for joint in range(len(joint_cmd[0].pos))] \
                                   for t in range(len(times_new))] #Rearrange into a list of joint pos's
-        return joint_pos_resampled
     except TypeError as e: # Gives an error if the data can't be spline-interpolated; try linear instead
         joints_pos_new = []
         for joint in range(len(joint_cmd[0].pos)): #For each joint, construct spline-interpolation
             joint_pos_old = np.array([cmd.pos[joint] for cmd in joint_cmd])
-            print joint_pos_old
             interpf = interpolate.interp1d(times_old, joint_pos_old)
             joints_pos_new.append(interpf(times_new))
         joint_pos_resampled = [[joints_pos_new[joint][t] \
                                   for joint in range(len(joint_cmd[0].pos))] \
                                   for t in range(len(times_new))] #Rearrange into a list of joint pos's
-        return joint_pos_resampled
+    #Derive joint velocities from joint positions (could use derivatives, but currently this is more accurate)
+    joint_vel_resampled = [[(joint_pos_resampled[i+1][joint] - joint_pos_resampled[i][joint])/resample_utime_step/1000000
+                                  for joint in range(len(joint_cmd[0].pos))]
+                                  for i in range(len(joint_pos_resampled)-1)]
+    #For the ith pos (i in [1,n]), the (i-1)th vel will be used to reach that pos. Velocity to
+    # reach initial pos (i=0) unspecified.
+    return joint_pos_resampled, joint_vel_resampled
 
 def convertACH_Command(msg):
     return msg.Joints
@@ -94,15 +97,21 @@ class abbIRB140LCMWrapper:
         self.lc.subscribe("IRB140Input",self.command_handler)
         self.lc.subscribe("IRB140JOINTPLAN",self.plan_handler)
         self.lc.subscribe("IRB140JOINTCMD",self.command_handler)
-        
-        self.resample_utime_step = 100.
+        self.resample_utime_step = .01*1000000 # .01 seconds per step; 100 Hz
 
     def plan_handler(self,channel,data):
         print "receive plan"
         msg = abb_irb140joint_plan.decode(data)
-        plan_new = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
-        for pos in plan_new:
-            self.robot.addJointPosBuffer(pos)
+        plan_pos, plan_vel = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
+        self.robot.set_speed() # use default speed for assuming initial position.
+        self.robot.addJointPosBuffer(plan_pos[0])
+        for i in range(1, len(plan_pos)):
+            # Set speed before calling addJointPosBuffer
+            max_joint_speed = max([abs(j_vel) for j_vel in plan_vel[i-1]])
+            max_joint_speed = min(max(max_joint_speed, 1), 180)
+            self.robot.set_speed([0,0,0] + [max_joint_speed]) # This will limit joint rotation to max_joint_speed deg/s
+            # Add pos to buffer
+            self.robot.addJointPosBuffer(plan_pos[i])
         self.robot.executeJointPosBuffer()
         self.robot.clearJointPosBuffer()
         
