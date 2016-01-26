@@ -122,6 +122,11 @@ class abbIRB140LCMWrapper:
         msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian)
         self.lc.publish("IRB140STATE", msg.encode())
 
+        #FT sensor
+        sensordata = self.robot.getForceSensors()
+        msg = convertSensordata(sensordata)
+        self.lc.publish("IRB140FTSENSOR", msg.encode())
+
     def mainLoop(self,freq):
         pauseDelay = 1.0/freq #In Seconds.
         t = 1
