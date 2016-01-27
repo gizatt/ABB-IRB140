@@ -132,15 +132,17 @@ class abbIRB140LCMWrapper:
         t = 1
         def broadcastLoop():
             while True:
-                self.broadcast_state()
-                time.sleep(pauseDelay)
+                try:
+                    self.broadcast_state()
+                    time.sleep(pauseDelay)
+                except Exception as e:
+                    print "Error: ", e
         try:
             t = threading.Thread(target=broadcastLoop)
             t.daemon = True
             t.start()
             while True:
-                time.sleep(pauseDelay)
-                self.lc.handle()
+                self.lc.handle_timeout(pauseDelay)
         except KeyboardInterrupt:
             pass
 
