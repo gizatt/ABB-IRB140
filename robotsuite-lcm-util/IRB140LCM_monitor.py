@@ -15,6 +15,7 @@ import threading
 from abblcm import *
 from scipy import interpolate
 import numpy as np
+import sys, traceback
 
 #Message Conversion
 def convertABBstate(joint_pos,joint_vel,cartesian):
@@ -137,6 +138,7 @@ class abbIRB140LCMWrapper:
                     time.sleep(pauseDelay)
                 except Exception as e:
                     print "Error: ", e
+                    traceback.print_exc(file=sys.stdout)
         try:
             t = threading.Thread(target=broadcastLoop)
             t.daemon = True
