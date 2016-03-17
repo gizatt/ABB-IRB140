@@ -8,13 +8,15 @@ import lcm
 import time
 import drc
 import abblcm
+import bot_core
 import math
 
 class abbIRB140DRCLCMConvertor:
     def __init__(self):
         self.lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=1")
         self.lc.subscribe("IRB140STATE", self.convertNSend)
-        self.lc.subscribe("COMMITTED_ROBOT_PLAN",self.joint_plan_handler)
+        self.lc.subscribe("COMMITTED_ROBOT_PLAN", self.joint_plan_handler)
+        self.lc.subscribe("IRB140MANIPPLANFINISHED", self.manip_plan_finised_handler)
         
 
     def joint_plan_handler(self,channel,data):
@@ -52,28 +54,28 @@ class abbIRB140DRCLCMConvertor:
 
     def convertNSend(self,channel,data):
         msgIn = abblcm.abb_irb140state.decode(data)
-        msgOut = drc.robot_state_t()
+        msgOut = bot_core.robot_state_t()
 
         ### Msg Conversion
 
         msgOut.utime = msgIn.utime
-        msgOut.pose = drc.position_3d_t()
-        msgOut.pose.translation = drc.vector_3d_t()
-        msgOut.pose.translation.x = 0.0
+        msgOut.pose = bot_core.position_3d_t()
+        msgOut.pose.translation = bot_core.vector_3d_t()
+        msgOut.pose.translation.x = -0.17 # 0.0 #HACKY FIXME READ FROM irb140.cfg n = [ 0, 0, .911 ]; = [ -0.17, 0, 0 ]; # -.17 , 0, 0  #
         msgOut.pose.translation.y = 0.0
-        msgOut.pose.translation.z = 0.0
-        msgOut.pose.rotation = drc.quaternion_t()
+        msgOut.pose.translation.z = 0.911
+        msgOut.pose.rotation = bot_core.quaternion_t()
         # rotate by x axis by -90 degrees
         msgOut.pose.rotation.w = 1.0 
         msgOut.pose.rotation.x = 0.0
         msgOut.pose.rotation.y = 0.0
         msgOut.pose.rotation.z = 0.0
-        msgOut.twist = drc.twist_t()
-        msgOut.twist.linear_velocity = drc.vector_3d_t()
+        msgOut.twist = bot_core.twist_t()
+        msgOut.twist.linear_velocity = bot_core.vector_3d_t()
         msgOut.twist.linear_velocity.x = 0.0
         msgOut.twist.linear_velocity.y = 0.0
         msgOut.twist.linear_velocity.z = 0.0
-        msgOut.twist.angular_velocity = drc.vector_3d_t()
+        msgOut.twist.angular_velocity = bot_core.vector_3d_t()
         msgOut.twist.angular_velocity.x = 0.0
         msgOut.twist.angular_velocity.y = 0.0
         msgOut.twist.angular_velocity.z = 0.0
@@ -86,7 +88,7 @@ class abbIRB140DRCLCMConvertor:
         msgOut.joint_velocity = [joint_vel/180.0*math.pi for joint_vel in msgIn.joints.vel]
         msgOut.joint_effort = [0.0 for i in range(msgOut.num_joints)]
         
-        msgOut.force_torque = drc.force_torque_t()
+        msgOut.force_torque = bot_core.force_torque_t()
         msgOut.force_torque.l_foot_force_z = 0
         msgOut.force_torque.l_foot_torque_x = 0
         msgOut.force_torque.l_foot_torque_y = 0
@@ -100,6 +102,12 @@ class abbIRB140DRCLCMConvertor:
  
         #Msg Publish
         self.lc.publish("EST_ROBOT_STATE", msgOut.encode())
+
+    def manip_plan_finised_handler(self, channel, data):
+        # This channel is using dummy lcm messages, so needn't trifle with channel or data.
+        # Just need to create message that tells program the manip plan finished.
+        pass # TODO
+        
 
 if __name__ == "__main__":
     convertor = abbIRB140DRCLCMConvertor()
