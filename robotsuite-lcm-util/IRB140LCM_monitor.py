@@ -99,6 +99,9 @@ class abbIRB140LCMWrapper:
     def plan_handler(self,channel,data):
         print "receive plan"
         msg = abb_irb140joint_plan.decode(data)
+
+        self.robot.setJoints(msg.joint_cmd[-1].pos)
+        '''
         plan_pos, plan_times = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
         # Add pos to buffer
         self.robot.addJointPosBuffer(plan_pos[0])
@@ -109,19 +112,21 @@ class abbIRB140LCMWrapper:
             self.robot.addJointPosBuffer(plan_pos[i])
         self.robot.executeJointPosBuffer()
         self.robot.clearJointPosBuffer()
-        
+        '''
+
     def command_handler(self,channel,data):
         print "receive command"
         msg = abb_irb140joints.decode(data)
-	    jointCommand = msg.pos
+        jointCommand = msg.pos
         self.robot.setJoints(jointCommand)
 
     def broadcast_state(self):
         jointPos = self.logger.getJoints()
         cartesian = self.logger.getCartesian()
         #ABB drive to LCM conversion
-        msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian)
-        self.lc.publish("IRB140STATE", msg.encode())
+        if (jointPos and cartesian):
+            msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian)
+            self.lc.publish("IRB140STATE", msg.encode())
 
     def mainLoop(self,freq):
         pauseDelay = 1.0/freq #In Seconds.
@@ -147,5 +152,5 @@ class abbIRB140LCMWrapper:
 if __name__ == "__main__":
     wrapper = abbIRB140LCMWrapper()
     print "IRB140LCMWrapper finish initialization, Begin transmission to LCM"
-    wrapper.mainLoop(10) #Hertz
+    wrapper.mainLoop(30) #Hertz
     print "IRB140LCMWrapper terminated successfully."
