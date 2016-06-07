@@ -88,7 +88,8 @@ def convertACH_Command(msg):
 class abbIRB140LCMWrapper:
     
     def __init__(self):
-        self.robot = abb.Robot(verbose=True); #Robot Connection to openABB, input Robot's IP if needed.
+        self.robot = abb.Robot(verbose=True) #Robot Connection to openABB, input Robot's IP if needed.
+        self.logger = abb.Logger(verbose=True)
         self.lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=1")
         self.lc.subscribe("IRB140Input",self.command_handler)
         self.lc.subscribe("IRB140JOINTPLAN",self.plan_handler)
@@ -112,12 +113,12 @@ class abbIRB140LCMWrapper:
     def command_handler(self,channel,data):
         print "receive command"
         msg = abb_irb140joints.decode(data)
-	jointCommand = msg.pos
+	    jointCommand = msg.pos
         self.robot.setJoints(jointCommand)
 
     def broadcast_state(self):
-        jointPos = self.robot.getJoints()
-        cartesian = self.robot.getCartesian()
+        jointPos = self.logger.getJoints()
+        cartesian = self.logger.getCartesian()
         #ABB drive to LCM conversion
         msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian)
         self.lc.publish("IRB140STATE", msg.encode())
@@ -125,8 +126,9 @@ class abbIRB140LCMWrapper:
     def mainLoop(self,freq):
         pauseDelay = 1.0/freq #In Seconds.
         t = 1
+        stop = False
         def broadcastLoop():
-            while True:
+            while not stop:
                 self.broadcast_state()
                 time.sleep(pauseDelay)
         try:
@@ -137,7 +139,10 @@ class abbIRB140LCMWrapper:
                 time.sleep(pauseDelay)
                 self.lc.handle()
         except KeyboardInterrupt:
-            pass
+            stop = True
+            t.join()
+            self.logger.stop()
+            self.robot.close()
 
 if __name__ == "__main__":
     wrapper = abbIRB140LCMWrapper()
