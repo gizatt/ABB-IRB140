@@ -14,13 +14,14 @@ public final class abb_irb140state implements lcm.lcm.LCMEncodable
     public long utime;
     public abblcm.abb_irb140joints joints;
     public abblcm.abb_irb140cartesian cartesian;
+    public abblcm.abb_irb140ftsensor force_torque;
  
     public abb_irb140state()
     {
     }
  
     public static final long LCM_FINGERPRINT;
-    public static final long LCM_FINGERPRINT_BASE = 0xc085bdf6c7fbcd78L;
+    public static final long LCM_FINGERPRINT_BASE = 0xc47badbba6944124L;
  
     static {
         LCM_FINGERPRINT = _hashRecursive(new ArrayList<Class<?>>());
@@ -35,6 +36,7 @@ public final class abb_irb140state implements lcm.lcm.LCMEncodable
         long hash = LCM_FINGERPRINT_BASE
              + abblcm.abb_irb140joints._hashRecursive(classes)
              + abblcm.abb_irb140cartesian._hashRecursive(classes)
+             + abblcm.abb_irb140ftsensor._hashRecursive(classes)
             ;
         classes.remove(classes.size() - 1);
         return (hash<<1) + ((hash>>63)&1);
@@ -53,6 +55,8 @@ public final class abb_irb140state implements lcm.lcm.LCMEncodable
         this.joints._encodeRecursive(outs); 
  
         this.cartesian._encodeRecursive(outs); 
+ 
+        this.force_torque._encodeRecursive(outs); 
  
     }
  
@@ -84,6 +88,8 @@ public final class abb_irb140state implements lcm.lcm.LCMEncodable
  
         this.cartesian = abblcm.abb_irb140cartesian._decodeRecursiveFactory(ins);
  
+        this.force_torque = abblcm.abb_irb140ftsensor._decodeRecursiveFactory(ins);
+ 
     }
  
     public abblcm.abb_irb140state copy()
@@ -94,6 +100,8 @@ public final class abb_irb140state implements lcm.lcm.LCMEncodable
         outobj.joints = this.joints.copy();
  
         outobj.cartesian = this.cartesian.copy();
+ 
+        outobj.force_torque = this.force_torque.copy();
  
         return outobj;
     }

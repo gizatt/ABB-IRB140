@@ -9,17 +9,20 @@ except ImportError:
     from io import BytesIO
 import struct
 
+import abblcm.abb_irb140ftsensor
+
 import abblcm.abb_irb140joints
 
 import abblcm.abb_irb140cartesian
 
 class abb_irb140state(object):
-    __slots__ = ["utime", "joints", "cartesian"]
+    __slots__ = ["utime", "joints", "cartesian", "force_torque"]
 
     def __init__(self):
         self.utime = 0
         self.joints = abblcm.abb_irb140joints()
         self.cartesian = abblcm.abb_irb140cartesian()
+        self.force_torque = abblcm.abb_irb140ftsensor()
 
     def encode(self):
         buf = BytesIO()
@@ -33,6 +36,8 @@ class abb_irb140state(object):
         self.joints._encode_one(buf)
         assert self.cartesian._get_packed_fingerprint() == abblcm.abb_irb140cartesian._get_packed_fingerprint()
         self.cartesian._encode_one(buf)
+        assert self.force_torque._get_packed_fingerprint() == abblcm.abb_irb140ftsensor._get_packed_fingerprint()
+        self.force_torque._encode_one(buf)
 
     def decode(data):
         if hasattr(data, 'read'):
@@ -49,6 +54,7 @@ class abb_irb140state(object):
         self.utime = struct.unpack(">q", buf.read(8))[0]
         self.joints = abblcm.abb_irb140joints._decode_one(buf)
         self.cartesian = abblcm.abb_irb140cartesian._decode_one(buf)
+        self.force_torque = abblcm.abb_irb140ftsensor._decode_one(buf)
         return self
     _decode_one = staticmethod(_decode_one)
 
@@ -56,7 +62,7 @@ class abb_irb140state(object):
     def _get_hash_recursive(parents):
         if abb_irb140state in parents: return 0
         newparents = parents + [abb_irb140state]
-        tmphash = (0xc085bdf6c7fbcd78+ abblcm.abb_irb140joints._get_hash_recursive(newparents)+ abblcm.abb_irb140cartesian._get_hash_recursive(newparents)) & 0xffffffffffffffff
+        tmphash = (0xc47badbba6944124+ abblcm.abb_irb140joints._get_hash_recursive(newparents)+ abblcm.abb_irb140cartesian._get_hash_recursive(newparents)+ abblcm.abb_irb140ftsensor._get_hash_recursive(newparents)) & 0xffffffffffffffff
         tmphash  = (((tmphash<<1)&0xffffffffffffffff)  + (tmphash>>63)) & 0xffffffffffffffff
         return tmphash
     _get_hash_recursive = staticmethod(_get_hash_recursive)

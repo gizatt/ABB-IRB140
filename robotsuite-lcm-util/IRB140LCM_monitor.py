@@ -95,8 +95,8 @@ def convertACH_Command(msg):
 class abbIRB140LCMWrapper:
     
     def __init__(self):
-        self.robot = abb.Robot(verbose=True) #Robot Connection to openABB, input Robot's IP if needed.
-        self.logger = abb.Logger(verbose=True)
+        self.robot = abb.Robot(verbose=False) #Robot Connection to openABB, input Robot's IP if needed.
+        self.logger = abb.Logger(verbose=False)
         self.lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=1")
         self.lc.subscribe("IRB140Input",self.command_handler)
         self.lc.subscribe("IRB140JOINTPLAN",self.plan_handler)
@@ -160,5 +160,5 @@ class abbIRB140LCMWrapper:
 if __name__ == "__main__":
     wrapper = abbIRB140LCMWrapper()
     print "IRB140LCMWrapper finish initialization, Begin transmission to LCM"
-    wrapper.mainLoop(100) #Hertz
+    wrapper.mainLoop(50) #Hertz
     print "IRB140LCMWrapper terminated successfully."
