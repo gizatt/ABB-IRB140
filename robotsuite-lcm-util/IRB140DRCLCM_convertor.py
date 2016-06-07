@@ -1,5 +1,5 @@
 """
-Author: alexc89@mit.edu
+Author: alexc89@mit.edu, gizatt@mit
 IRB140DRCLCM_Convertor
 This is a script to convert LCM channels from IRB140LCM_Monitor (IRB140STATE) to DRC Channels: robot_state_t.
 
@@ -84,7 +84,7 @@ class abbIRB140DRCLCMConvertor:
         msgOut.joint_name = ["joint" + str(i+1) for i in range(msgOut.num_joints)]
         msgOut.joint_position = [joint_pos/180.0*math.pi for joint_pos in msgIn.joints.pos]
         #msgOut.joint_position[0] = -msgOut.joint_position[0]
-	#msgOut.joint_position[2] = -msgOut.joint_position[2]
+	    #msgOut.joint_position[2] = -msgOut.joint_position[2]
         msgOut.joint_velocity = [joint_vel/180.0*math.pi for joint_vel in msgIn.joints.vel]
         msgOut.joint_effort = [0.0 for i in range(msgOut.num_joints)]
         
@@ -95,8 +95,8 @@ class abbIRB140DRCLCMConvertor:
         msgOut.force_torque.r_foot_force_z = 0
         msgOut.force_torque.r_foot_torque_x = 0
         msgOut.force_torque.r_foot_torque_y = 0
-        msgOut.force_torque.l_hand_force = [0,0,0]
-        msgOut.force_torque.l_hand_torque = [0,0,0]
+        msgOut.force_torque.l_hand_force = msgIn.force_torque.hand_force
+        msgOut.force_torque.l_hand_torque = msgIn.force_torque.hand_torque
         msgOut.force_torque.r_hand_force = [0,0,0]
         msgOut.force_torque.r_hand_torque = [0,0,0]
  

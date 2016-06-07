@@ -17,7 +17,18 @@ from scipy import interpolate
 import numpy as np
 
 #Message Conversion
-def convertABBstate(joint_pos,joint_vel,cartesian):
+def convertSensordata(rawdata):
+    msg = abb_irb140ftsensor()
+    msg.utime = time.time()*1000000
+    if rawdata is not None:
+        msg.hand_force = rawdata[0:3]
+        msg.hand_torque = rawdata[3:6]
+    else:
+        msg.hand_force = [float('nan'), float('nan'), float('nan')]
+        msg.hand_torque = [float('nan'), float('nan'), float('nan')]
+    return msg
+
+def convertABBstate(joint_pos,joint_vel,cartesian,force_torque):
     msg = abb_irb140state()
     msg.utime=  time.time()*1000000
    
@@ -29,14 +40,10 @@ def convertABBstate(joint_pos,joint_vel,cartesian):
     msg.joints.vel = joint_vel
     msg.cartesian.pos = cartesian[0]
     msg.cartesian.quat = cartesian[1]
+
+    msg.force_torque = convertSensordata(force_torque)
     return msg
 
-def convertSensordata(rawdata):
-   msg = abb_irb140ftsensor()
-   msg.utime = time.time()*1000000
-   msg.hand_force = rawdata[0:3]
-   msg.hand_torque = rawdata[3:6]
-   return msg
 
 #Interpolate and resample
 def resampleJointPlanCubicSpline(joint_cmd, resample_utime_step):
@@ -126,11 +133,8 @@ class abbIRB140LCMWrapper:
         forceTorque = self.logger.getForceSensors()
         #ABB drive to LCM conversion
         if (jointPos and cartesian):
-            msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian)
+            msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian, forceTorque)
             self.lc.publish("IRB140STATE", msg.encode())
-        if (forceTorque):
-            msg = convertSensordata(forceTorque)
-            self.lc.publish("IRB140FTSENSOR", msg.encode())
 
     def mainLoop(self,freq):
         pauseDelay = 1.0/freq #In Seconds.
@@ -156,5 +160,5 @@ class abbIRB140LCMWrapper:
 if __name__ == "__main__":
     wrapper = abbIRB140LCMWrapper()
     print "IRB140LCMWrapper finish initialization, Begin transmission to LCM"
-    wrapper.mainLoop(30) #Hertz
+    wrapper.mainLoop(100) #Hertz
     print "IRB140LCMWrapper terminated successfully."

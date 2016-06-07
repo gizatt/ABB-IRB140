@@ -5,4 +5,5 @@ struct abb_irb140state
 
   abb_irb140joints joints;
   abb_irb140cartesian cartesian;
+  abb_irb140ftsensor force_torque;
 }
