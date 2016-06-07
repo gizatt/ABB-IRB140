@@ -123,10 +123,14 @@ class abbIRB140LCMWrapper:
     def broadcast_state(self):
         jointPos = self.logger.getJoints()
         cartesian = self.logger.getCartesian()
+        forceTorque = self.logger.getForceSensors()
         #ABB drive to LCM conversion
         if (jointPos and cartesian):
             msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian)
             self.lc.publish("IRB140STATE", msg.encode())
+        if (forceTorque):
+            msg = convertSensordata(forceTorque)
+            self.lc.publish("IRB140FTSENSOR", msg.encode())
 
     def mainLoop(self,freq):
         pauseDelay = 1.0/freq #In Seconds.
