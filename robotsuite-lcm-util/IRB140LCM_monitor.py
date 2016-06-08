@@ -95,13 +95,14 @@ def convertACH_Command(msg):
 class abbIRB140LCMWrapper:
     
     def __init__(self):
-        self.robot = abb.Robot(verbose=False) #Robot Connection to openABB, input Robot's IP if needed.
+        self.robot = abb.Robot(verbose=True) #Robot Connection to openABB, input Robot's IP if needed.
+        self.robot.setJointPosBufferFTSetpoint()
         self.logger = abb.Logger(verbose=False)
         self.lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=1")
         self.lc.subscribe("IRB140Input",self.command_handler)
         self.lc.subscribe("IRB140JOINTPLAN",self.plan_handler)
         self.lc.subscribe("IRB140JOINTCMD",self.command_handler)
-        self.resample_utime_step = .02*1000000 # left number (ie. not 1000000) gives seconds per step
+        self.resample_utime_step = .05*1000*1000 # left number (ie. not 1000000) gives seconds per step
 
     def plan_handler(self,channel,data):
         print "receive plan"
@@ -109,10 +110,11 @@ class abbIRB140LCMWrapper:
 
         plan_pos, plan_times = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
         # Add pos to buffer
+        self.robot.clearJointPosBuffer()
         self.robot.addJointPosBuffer(plan_pos[0])
         for i in range(1, len(plan_pos)):
             # Set move time before calling addJointPosBuffer
-            self.robot.setMoveTime(plan_times[i-1])
+            #self.robot.setMoveTime(plan_times[i-1])
             # Add pos to buffer
             self.robot.addJointPosBuffer(plan_pos[i])
         self.robot.executeJointPosBufferWithFT()
