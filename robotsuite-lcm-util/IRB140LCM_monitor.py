@@ -101,14 +101,12 @@ class abbIRB140LCMWrapper:
         self.lc.subscribe("IRB140Input",self.command_handler)
         self.lc.subscribe("IRB140JOINTPLAN",self.plan_handler)
         self.lc.subscribe("IRB140JOINTCMD",self.command_handler)
-        self.resample_utime_step = .05*1000000 # left number (ie. not 1000000) gives seconds per step
+        self.resample_utime_step = .02*1000000 # left number (ie. not 1000000) gives seconds per step
 
     def plan_handler(self,channel,data):
         print "receive plan"
         msg = abb_irb140joint_plan.decode(data)
 
-        self.robot.setJoints(msg.joint_cmd[-1].pos)
-        '''
         plan_pos, plan_times = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
         # Add pos to buffer
         self.robot.addJointPosBuffer(plan_pos[0])
@@ -117,9 +115,8 @@ class abbIRB140LCMWrapper:
             self.robot.setMoveTime(plan_times[i-1])
             # Add pos to buffer
             self.robot.addJointPosBuffer(plan_pos[i])
-        self.robot.executeJointPosBuffer()
+        self.robot.executeJointPosBufferWithFT()
         self.robot.clearJointPosBuffer()
-        '''
 
     def command_handler(self,channel,data):
         print "receive command"
