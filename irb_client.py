@@ -1,6 +1,7 @@
+#!/usr/bin/python
+
 '''
-Author: alexc89@mit.edu
-IRB140LCMWrapper
+Author: alexc89@mit.edu, geronm@mit.edu, gizatt@mit.edu
 This is a script connecting OPEN ABB Driver with LCM.  It publishes IRB140's joint position in IRB140Pos LCM Channel and listens IRB140Input to control IRB140's joint.
 Please note that the unit of the joint state and command is dependent on the setting on the IRB140, this script DOES NOT translate the command into a specific unit like radian.
 

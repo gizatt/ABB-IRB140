@@ -1,7 +1,9 @@
+#!/usr/bin/python
+
 """
-Author: alexc89@mit.edu, gizatt@mit
+Author: alexc89@mit.edu, geronm@mit.edu, gizatt@mit.edu
 IRB140DRCLCM_Convertor
-This is a script to convert LCM channels from IRB140LCM_Monitor (IRB140STATE) to DRC Channels: robot_state_t.
+This is a script to convert LCM channels from irb_client.py (IRB140STATE) to LCM channels: robot_state_t.
 
 """
 import lcm
