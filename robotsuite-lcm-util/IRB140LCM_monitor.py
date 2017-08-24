@@ -17,7 +17,18 @@ from scipy import interpolate
 import numpy as np
 
 #Message Conversion
-def convertABBstate(joint_pos,joint_vel,cartesian):
+def convertSensordata(rawdata):
+    msg = abb_irb140ftsensor()
+    msg.utime = time.time()*1000000
+    if rawdata is not None:
+        msg.hand_force = rawdata[0:3]
+        msg.hand_torque = rawdata[3:6]
+    else:
+        msg.hand_force = [float('nan'), float('nan'), float('nan')]
+        msg.hand_torque = [float('nan'), float('nan'), float('nan')]
+    return msg
+
+def convertABBstate(joint_pos,joint_vel,cartesian,force_torque):
     msg = abb_irb140state()
     msg.utime=  time.time()*1000000
    
@@ -29,14 +40,10 @@ def convertABBstate(joint_pos,joint_vel,cartesian):
     msg.joints.vel = joint_vel
     msg.cartesian.pos = cartesian[0]
     msg.cartesian.quat = cartesian[1]
+
+    msg.force_torque = convertSensordata(force_torque)
     return msg
 
-def convertSensordata(rawdata):
-   msg = abb_irb140ftsensor()
-   msg.utime = time.time()*1000000
-   msg.hand_force = rawdata[0:3]
-   msg.hand_torque = rawdata[3:6]
-   return msg
 
 #Interpolate and resample
 def resampleJointPlanCubicSpline(joint_cmd, resample_utime_step):
@@ -57,19 +64,26 @@ def resampleJointPlanCubicSpline(joint_cmd, resample_utime_step):
     times_old = np.array([cmd.utime for cmd in joint_cmd])
     start_time = joint_cmd[0].utime
     end_time = joint_cmd[-1].utime
-    times_new = np.arange(start_time, end_time+resample_utime_step, resample_utime_step)
+    if end_time <= start_time:
+        print "Invalid plan times coming in:", times_old
+        return None, None
+
+    times_new = np.arange(start_time, end_time, resample_utime_step)
+    times_new = np.append(times_new, [end_time])
+    print "times: ", start_time, end_time, times_new
     joint_pos_resampled = []
     joint_times_resampled = []
     try:
         joints_pos_new = []
         for joint in range(len(joint_cmd[0].pos)): #For each joint, construct spline-interpolation
             joint_pos_old = np.array([cmd.pos[joint] for cmd in joint_cmd])
-            cubespline = interpolate.splrep(times_old, joint_pos_old, s=0)
+            cubespline = interpolate.splrep(times_old, joint_pos_old, s=0)    
             joints_pos_new.append(interpolate.splev(times_new, cubespline, der=0))
         joint_pos_resampled = [[joints_pos_new[joint][t] \
                                   for joint in range(len(joint_cmd[0].pos))] \
                                   for t in range(len(times_new))] #Rearrange into a list of joint pos's
     except TypeError as e: # Gives an error if the data can't be spline-interpolated; try linear instead
+        print "TypeError caught in resampleJointPlanCubicSpline: ", e
         joints_pos_new = []
         for joint in range(len(joint_cmd[0].pos)): #For each joint, construct spline-interpolation
             joint_pos_old = np.array([cmd.pos[joint] for cmd in joint_cmd])
@@ -88,45 +102,55 @@ def convertACH_Command(msg):
 class abbIRB140LCMWrapper:
     
     def __init__(self):
-        self.robot = abb.Robot(verbose=True); #Robot Connection to openABB, input Robot's IP if needed.
+        self.robot = abb.Robot(verbose=True, speed=[40,20,20,20])# speed=[100, 50, 50, 50]) #Robot Connection to openABB, input Robot's IP if needed.
+        self.robot.setJointPosBufferFTSetpoint()
+        self.logger = abb.Logger(verbose=False)
         self.lc = lcm.LCM("udpm://239.255.76.67:7667?ttl=1")
         self.lc.subscribe("IRB140Input",self.command_handler)
         self.lc.subscribe("IRB140JOINTPLAN",self.plan_handler)
         self.lc.subscribe("IRB140JOINTCMD",self.command_handler)
-        self.resample_utime_step = .05*1000000 # left number (ie. not 1000000) gives seconds per step
+        self.resample_utime_step = .05*1000*1000 # left number (ie. not 1000000) gives seconds per step
 
     def plan_handler(self,channel,data):
         print "receive plan"
         msg = abb_irb140joint_plan.decode(data)
+
         plan_pos, plan_times = resampleJointPlanCubicSpline(msg.joint_cmd, self.resample_utime_step)
-        # Add pos to buffer
-        self.robot.addJointPosTimeBuffer(plan_pos[0])
-        for i in range(1, len(plan_pos)):
-            # Set move time before calling addJointPosBuffer
-            self.robot.setMoveTime(plan_times[i-1])
+
+        if plan_pos and plan_times:
             # Add pos to buffer
-            self.robot.addJointPosTimeBuffer(plan_pos[i])
-        self.robot.executeJointPosTimeBuffer()
-        self.robot.clearJointPosTimeBuffer()
-        
+            self.robot.clearJointPosBuffer()
+            self.robot.addJointPosBuffer(plan_pos[0])
+            for i in range(1, len(plan_pos)):
+                # Set move time before calling addJointPosBuffer
+                #self.robot.setMoveTime(plan_times[i-1])
+                # Add pos to buffer
+                self.robot.addJointPosBuffer(plan_pos[i])
+            self.robot.executeJointPosBufferWithFT()
+#            self.robot.executeJointPosBuffer()
+            self.robot.clearJointPosBuffer()
+
     def command_handler(self,channel,data):
         print "receive command"
         msg = abb_irb140joints.decode(data)
-	jointCommand = msg.pos
+        jointCommand = msg.pos
         self.robot.setJoints(jointCommand)
 
     def broadcast_state(self):
-        jointPos = self.robot.getJoints()
-        cartesian = self.robot.getCartesian()
+        jointPos = self.logger.getJoints()
+        cartesian = self.logger.getCartesian()
+        forceTorque = self.logger.getForceSensors()
         #ABB drive to LCM conversion
-        msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian)
-        self.lc.publish("IRB140STATE", msg.encode())
+        if (jointPos and cartesian):
+            msg = convertABBstate(jointPos,[0,0,0,0,0,0],cartesian, forceTorque)
+            self.lc.publish("IRB140STATE", msg.encode())
 
     def mainLoop(self,freq):
         pauseDelay = 1.0/freq #In Seconds.
         t = 1
+        stop = False
         def broadcastLoop():
-            while True:
+            while not stop:
                 self.broadcast_state()
                 time.sleep(pauseDelay)
         try:
@@ -137,10 +161,13 @@ class abbIRB140LCMWrapper:
                 time.sleep(pauseDelay)
                 self.lc.handle()
         except KeyboardInterrupt:
-            pass
+            stop = True
+            t.join()
+            self.logger.stop()
+            self.robot.close()
 
 if __name__ == "__main__":
     wrapper = abbIRB140LCMWrapper()
     print "IRB140LCMWrapper finish initialization, Begin transmission to LCM"
-    wrapper.mainLoop(10) #Hertz
+    wrapper.mainLoop(50) #Hertz
     print "IRB140LCMWrapper terminated successfully."
