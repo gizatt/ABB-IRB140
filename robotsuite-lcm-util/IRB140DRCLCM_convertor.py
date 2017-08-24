@@ -6,7 +6,7 @@ This is a script to convert LCM channels from IRB140LCM_Monitor (IRB140STATE) to
 """
 import lcm
 import time
-import drc
+import robotlocomotion
 import abblcm
 import bot_core
 import math
@@ -20,7 +20,7 @@ class abbIRB140DRCLCMConvertor:
         
 
     def joint_plan_handler(self,channel,data):
-        msgIn = drc.robot_plan_t.decode(data)
+        msgIn = robotlocomotion.robot_plan_t.decode(data)
         msgOut = abblcm.abb_irb140joint_plan()
 
         msgOut.utime = msgIn.utime
@@ -37,7 +37,7 @@ class abbIRB140DRCLCMConvertor:
         self.lc.publish("IRB140JOINTPLAN",msgOut.encode())    
     
     def joint_cmd_handler(self,channel,data):
-        msgIn = drc.robot_plan_t.decode(data)
+        msgIn = robotlocomotion.robot_plan_t.decode(data)
         msgOut = abblcm.abb_irb140joints()
 
         msgOut.utime = msgIn.utime
@@ -101,7 +101,9 @@ class abbIRB140DRCLCMConvertor:
         msgOut.force_torque.r_hand_torque = [0,0,0]
  
         #Msg Publish
+        self.lc.publish("ARM_STATE", msgOut.encode()) #Why this? ~geronm
         self.lc.publish("EST_ROBOT_STATE", msgOut.encode())
+        
 
     def manip_plan_finised_handler(self, channel, data):
         # This channel is using dummy lcm messages, so needn't trifle with channel or data.

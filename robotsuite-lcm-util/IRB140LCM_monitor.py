@@ -77,6 +77,7 @@ def resampleJointPlanCubicSpline(joint_cmd, resample_utime_step):
                                   for joint in range(len(joint_cmd[0].pos))] \
                                   for t in range(len(times_new))] #Rearrange into a list of joint pos's
     except TypeError as e: # Gives an error if the data can't be spline-interpolated; try linear instead
+        print "TypeError caught in resampleJointPlanCubicSpline: ", e
         joints_pos_new = []
         for joint in range(len(joint_cmd[0].pos)): #For each joint, construct spline-interpolation
             joint_pos_old = np.array([cmd.pos[joint] for cmd in joint_cmd])
