@@ -32,10 +32,6 @@ class abbIRB140DRCLCMConvertor:
             msgOut.joint_cmd[i].pos = [msgIn.plan[i].joint_position[j]/math.pi*180.0 for j in range(msgIn.plan[i].num_joints)]
             msgOut.joint_cmd[i].vel = [msgIn.plan[i].joint_velocity[j]/math.pi*180.0 for j in range(msgIn.plan[i].num_joints)]
             msgOut.joint_cmd[i].utime = msgIn.plan[i].utime
-            #msgOut.joint_cmd[i].pos[0] = -msgOut.joint_cmd[i].pos[0]
-            #msgOut.joint_cmd[i].pos[2] = -msgOut.joint_cmd[i].pos[2]
-            #msgOut.joint_cmd[i].vel[0] = -msgOut.joint_cmd[i].vel[0]
-            #msgOut.joint_cmd[i].vel[2] = -msgOut.joint_cmd[i].vel[2]
         self.lc.publish("IRB140JOINTPLAN",msgOut.encode())    
     
     def joint_cmd_handler(self,channel,data):
@@ -45,10 +41,6 @@ class abbIRB140DRCLCMConvertor:
         msgOut.utime = msgIn.utime
         msgOut.pos = [msgIn.plan[-1].joint_position[j]/math.pi*180.0 for j in range(msgIn.plan[-1].num_joints)]
         msgOut.vel = [msgIn.plan[-1].joint_velocity[j]/math.pi*180.0 for j in range(msgIn.plan[-1].num_joints)]
-        #msgOut.pos[0] = -msgOut.pos[0]
-        #msgOut.pos[2] = -msgOut.pos[2]
-        #msgOut.vel[0] = -msgOut.vel[0]
-        #msgOut.vel[2] = -msgOut.vel[2]
         self.lc.publish("IRB140JOINTCMD",msgOut.encode())
 
 
@@ -59,7 +51,6 @@ class abbIRB140DRCLCMConvertor:
         msgOut = bot_core.robot_state_t()
 
         ### Msg Conversion
-
         msgOut.utime = msgIn.utime
         msgOut.pose = bot_core.position_3d_t()
         msgOut.pose.translation = bot_core.vector_3d_t()
