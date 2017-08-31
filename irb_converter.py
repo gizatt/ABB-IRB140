@@ -54,9 +54,9 @@ class abbIRB140DRCLCMConvertor:
         msgOut.utime = msgIn.utime
         msgOut.pose = bot_core.position_3d_t()
         msgOut.pose.translation = bot_core.vector_3d_t()
-        msgOut.pose.translation.x = -0.17 # 0.0 #HACKY FIXME READ FROM irb140.cfg n = [ 0, 0, .911 ]; = [ -0.17, 0, 0 ]; # -.17 , 0, 0  #
+        msgOut.pose.translation.x = 0.0
         msgOut.pose.translation.y = 0.0
-        msgOut.pose.translation.z = 0.911
+        msgOut.pose.translation.z = 0.0
         msgOut.pose.rotation = bot_core.quaternion_t()
         # rotate by x axis by -90 degrees
         msgOut.pose.rotation.w = 1.0 
